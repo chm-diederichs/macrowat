@@ -3,52 +3,36 @@ const util = require('util')
 const KEYWORD = /(?<=(for|while)\s*)\(.*\)/
 
 module.exports = function (text, table) {
-  return compile(parseLines(text), table)
+  return compile(parseLine(text.trim()), table)
 }
 
 module.exports.parseScope = parseScope
-module.exports.parseScopes = parseScopes
+module.exports.parse = parse
 
-function parseScopes (input) {
-  let braces = []
-  findSymbols(input, '{', braces)
-  findSymbols(input, '}', braces)
+function parse (input) {
+  const units = []
+  let offset = 0
 
-  let depth = 0
-  braces.sort((a, b) => a.index - b.index).map(s => {
-    s.depth = s.symbol === '{' ? depth++ : --depth
-    return s
+  do {
+    units.push(readLine(input, offset))
+    offset = readLine.offset
+  } while (offset < input.length && offset > 0)
+
+  const closures = units.map(unit => {
+    if (unit.hasOwnProperty('scope')) {
+      unit.scope = parse(unit.scope)
+    }
+    return unit
   })
-
-  const closures = []
-  for (let i = 0; i < braces.length; i++) {
-    const start = braces[i]
-    const end = braces.findIndex(b =>
-      b.depth === start.depth && b.symbol !== start.symbol)
-
-    closures.push(input.substring(start.index, braces[end].index + 1))
-    braces.splice(end, 1)
-  }
 
   return closures
 }
 
-function findSymbols (input, symbol, res) {
-  if (!res) return findSymbols(input, symbol, [])
-
-  let next = input.indexOf(symbol)
-  while (next >= 0) {
-    res.push({ symbol, index: next })
-    next = input.indexOf(symbol, next + 1)
-  }
-
-  return res
-}
-
-function parseScope (input) {
+function parseScope (input, offset) {
   let open = 0
   let close = 0
-  let next = input.indexOf('{')
+
+  let next = offset
 
   let count = 1
   while (count > 0) {
@@ -64,22 +48,30 @@ function parseScope (input) {
     }
   }
 
-  return input.substring(0, next)
+  return next + 1
 }
 
-function parseLines (input) {
-  const lines = input.trim().split('\n').map(s => s.trim())
-  // const positions
-  return lines.map(parseLine)
-}
+function readLine (input, offset) {
+  if (offset === undefined) return readLine(input, 0)
 
-function parseLine (line) {
+  const breakpoint = input.indexOf('\n', offset + 1)
+  const next = breakpoint > 0 ? breakpoint : undefined
+  const line = input.substring(offset, next).trim()
+
   const m = line.match(KEYWORD)
-  if (m === null) return parseOp(line)
+  if (m === null) {
+    readLine.offset = next + 1
+    return parseOp(line)
+  }
 
+  const close = parseScope(input, next)
+  const scope = input.substring(next + 1, close)
+
+  readLine.offset = close
   return {
     branch: m[1],
-    condition: m[0]
+    condition: m[0],
+    scope
   }
 }
 
