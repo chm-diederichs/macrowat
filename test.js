@@ -1,31 +1,63 @@
 const util = require('util')
-const parse = require('.')
+const parse = require('./parser')
 
-const input = `for (let i = 0; i < 10; i++) {
-  for (let i = 0; i < 10; i++) {
-    for (let how of why) {
-      fe25519_add(r[0], p[1], p[0])
-      fe25519_sub(r[1], p[1], p[0])
-      fe25519_mul(r[2], r[0], q[0])
-      fe25519_mul(r[1], r[1], q[1])
-      fe25519_mul(r[3], q[3], p[3])
-      fe25519_mul(r[0], p[2], q[2])       
-    }
-  }
-  for (let i = 0; i < 10; i++) {
+const input = `
+var t0 = fe25519()
+var t1 = fe25519()
+var t2 = fe25519()
+var t3 = fe25519()
+
+fe25519_sq(t0, z)
+fe25519_mul(t1, t0, z)
+fe25519_sq(t0, t1)
+fe25519_sq(t2, t0)
+fe25519_sq(t2, t2)
+fe25519_mul(t2, t2, t0)
+fe25519_mul(t1, t2, z)
+fe25519_sq(t2, t1)
+for (let i = 1; i < 5; i++) {
+  fe25519_sq(t2, t2)
+  for (let i = 1; i < 10; i++) {
+    fe25519_sq(t2, t2)
   }
 }
-fe25519_add(r[0], p[1], p[0])
-fe25519_sub(r[1], p[1], p[0])
-fe25519_mul(r[2], r[0], q[0])
-fe25519_mul(r[1], r[1], q[1])
-fe25519_mul(r[3], q[3], p[3])
-fe25519_mul(r[0], p[2], q[2])
-fe25519_add(t0, r[0], r[0])
-fe25519_sub(r[0], r[2], r[1])
-fe25519_add(r[1], r[2], r[1])
-fe25519_add(r[2], t0, r[3])
-fe25519_sub(r[3], t0, r[3])`
+fe25519_mul(t1, t2, t1)
+fe25519_sq(t2, t1)
+for (let i = 1; i < 10; i++) {
+  fe25519_sq(t2, t2)
+}
+fe25519_mul(t2, t2, t1)
+fe25519_sq(t3, t2)
+for (let i = 1; i < 20; i++) {
+  fe25519_sq(t3, t3)
+}
+fe25519_mul(t2, t3, t2)
+fe25519_sq(t2, t2)
+for (let i = 1; i < 10; i++) {
+  fe25519_sq(t2, t2)
+}
+fe25519_mul(t1, t2, t1)
+fe25519_sq(t2, t1)
+for (let i = 1; i < 50; i++) {
+  fe25519_sq(t2, t2)
+}
+fe25519_mul(t2, t2, t1)
+fe25519_sq(t3, t2)
+for (let i = 1; i < 100; i++) {
+  fe25519_sq(t3, t3)
+}
+fe25519_mul(t2, t3, t2)
+fe25519_sq(t2, t2)
+for (let i = 1; i < 50; i++) {
+  fe25519_sq(t2, t2)
+}
+fe25519_mul(t1, t2, t1)
+fe25519_sq(t1, t1)
+for (let i = 1; i < 4; i++) {
+  fe25519_sq(t1, t1)
+}
+fe25519_mul(out, t1, t0)
+`
 
 const table = [
   'fe25519_mul',
@@ -36,7 +68,7 @@ const table = [
 // parse(input, table)
   // const lines = input.trim().split('\n').map(s => s.trim())
 
-log(parse.parse(input))
+log(parse(input))
 // parse.parseScopes(input)
 // log(parse(input, table))
 

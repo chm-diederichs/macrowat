@@ -1,31 +1,21 @@
 const util = require('util')
 
-const KEYWORD = /(?<=(for|while)\s*)\(.*\)/
+const DECLARATION = /(?:var|const|let)\s+(\w+)(?:\s+=\s+(.+)(?:$|;))?/
+const KEYWORD = /(?<=(for|while)\s*)\((.*)\)/
 
-module.exports = function (text, table) {
-  return compile(parseLine(text.trim()), table)
-}
-
-module.exports.parseScope = parseScope
-module.exports.parse = parse
+module.exports = parse
 
 function parse (input) {
   const units = []
   let offset = 0
 
   do {
-    units.push(readLine(input, offset))
+    const unit = readLine(input, offset)
+    if (unit !== null) units.push(unit)
     offset = readLine.offset
   } while (offset < input.length && offset > 0)
 
-  const closures = units.map(unit => {
-    if (unit.hasOwnProperty('scope')) {
-      unit.scope = parse(unit.scope)
-    }
-    return unit
-  })
-
-  return closures
+  return units
 }
 
 function parseScope (input, offset) {
@@ -48,7 +38,7 @@ function parseScope (input, offset) {
     }
   }
 
-  return next + 1
+  return next
 }
 
 function readLine (input, offset) {
@@ -58,21 +48,81 @@ function readLine (input, offset) {
   const next = breakpoint > 0 ? breakpoint : undefined
   const line = input.substring(offset, next).trim()
 
-  const m = line.match(KEYWORD)
-  if (m === null) {
+  // handle empty lines and lines closing scope
+  if (line.length === 0 || line === '}') {
+    readLine.offset = offset + line.length + 1
+    return null
+  }
+
+  const conditional = line.match(KEYWORD)
+  const declaration = line.match(DECLARATION)
+  
+  let ret = {}
+
+  if (conditional !== null) {
+    const close = parseScope(input, next)
+    const scope = parse(input.substring(next + 1, close))
+
+    readLine.offset = close
+    ret.type = 'branch'
+    ret.operator = conditional[1]
+    ret.condition = parseCondition(conditional[2])
+    ret.scope = scope
+    return ret
+  }
+
+  if (declaration !== null) {
+    ret.type = 'declaration'
+    ret.name = declaration[1]
+
+    if (declaration[2]) {
+      const num = Number(declaration[2])
+      ret.value = num === NaN ? num : parseOp(declaration[2])
+    }
+
     readLine.offset = next + 1
-    return parseOp(line)
+    return ret
   }
 
-  const close = parseScope(input, next)
-  const scope = input.substring(next + 1, close)
+  readLine.offset = next + 1
+  return parseOp(line)
+}
 
-  readLine.offset = close
-  return {
-    branch: m[1],
-    condition: m[0],
-    scope
+function parseCondition (cond) {
+  const condition = {}
+
+  const vars = cond.match(/(?:(let|const)\s+)(\w)\s*=\s*(\d+)/)
+  condition.init = {}
+  condition.init.initialised = vars[1] === undefined
+  condition.init.parameter = vars[2]
+  condition.init.value = Number(vars[3])
+
+  const clause = cond.match(/.*;(?:(.*)\s+)?(<|>|<=|>=)(?:\s*(.*));.*/)
+  condition.check = {}
+  condition.check.parameter = clause[1]
+  condition.check.operator = clause[2]
+  condition.check.limit = {}
+  try {
+    condition.check.limit.value = Number(clause[3])
+    condition.check.limit.type = 'number'
+  } catch {
+    condition.check.limit.value = clause[3]
+    condition.check.limit.type = 'variable'
   }
+
+  const onloop = cond.match(/.+(\w)(?:(?:([\+\-])\2*)|(?:\s+(\+=|\-=)\s*(\w)))/)
+  condition.onloop = {}
+  condition.onloop.variable = onloop[1]
+  condition.onloop.operator = onloop[2] === undefined 
+    ? onloop[3] === '+=' 
+      ? 'add' 
+      : 'subtract' 
+    : onloop[2] === '+' 
+      ? 'inc'
+      : 'dec'
+  if (onloop[4] !== undefined) condition.onloop.value = Number(onloop[4])
+
+  return condition
 }
 
 function parseOp (line) {
@@ -93,22 +143,18 @@ function parseOp (line) {
     })
 
   return {
-    func,
+    type: 'call',
+    operator: func,
     args
   }
 }
 
-function compile (src, table) {
-  console.log(src)
-  let str = ''
-  for (let op of src) {
-    if (op.args) {
-      const args = op.args.map(a => `${a.arg}${a.index ? a.index : ''}`)
-      str += templates[op.func](...args, table)
-    }
-  }
+function fe25519 (name) {
+  let str = `;; ${name} = fe25519(})\n`
+  for (let i = 0; i < 10; i++) str += `
+(local $${name}_${i} i64)\n`
 
-  return str
+  return str + '\n'
 }
 
 function fe25519_add (res, arg1, arg2) {
