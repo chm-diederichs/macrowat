@@ -1,7 +1,14 @@
+const fs = require('fs')
 const util = require('util')
 const parse = require('./parser')
+const compile = require('./compile')
+const header = require('./header')
 
 const input = `
+function fe25519_invert_1 (out, z) {
+check_fe(out)
+check_fe(z)
+
 var t0 = fe25519()
 var t1 = fe25519()
 var t2 = fe25519()
@@ -57,18 +64,41 @@ for (let i = 1; i < 4; i++) {
   fe25519_sq(t1, t1)
 }
 fe25519_mul(out, t1, t0)
+}
 `
 
-const table = [
-  'fe25519_mul',
-  'fe25519_sq',
-  'fe25519_invert'
-]
+const functions = []
+const func = {}
+
+func.name = 'fe25519_mul'
+func.args = []
+for (let i = 0; i < 20; i++) func.args.push('i64')
+func.result = 'i32'
+functions.push(func)
+
+func.name = 'fe25519_invert'
+func.args = []
+for (let i = 0; i < 10; i++) func.args.push('i64')
+func.result = 'i32'
+functions.push(func)
+
+func.name = 'fe25519_sq'
+func.args = []
+for (let i = 0; i < 12; i++) func.args.push(i < 10 ? 'i64' : 'i32')
+func.result = 'i32'
+functions.push(func)
 
 // parse(input, table)
   // const lines = input.trim().split('\n').map(s => s.trim())
 
-log(parse(input))
+const file = fs.createWriteStream('./test.wat')
+  .on('error', console.error)
+
+file.write(header(functions))
+file.write(compile(parse(input), functions.map(f => f.name)))
+file.write(')')
+file.close()
+
 // parse.parseScopes(input)
 // log(parse(input, table))
 
