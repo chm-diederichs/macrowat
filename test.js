@@ -68,24 +68,30 @@ fe25519_mul(out, t1, t0)
 `
 
 const functions = []
-const func = {}
 
+let func
+func = {}
 func.name = 'fe25519_mul'
 func.args = []
 for (let i = 0; i < 20; i++) func.args.push('i64')
-func.result = 'i32'
+func.args.push('i32')
+func.result = null
 functions.push(func)
 
+func = {}
 func.name = 'fe25519_invert'
 func.args = []
 for (let i = 0; i < 10; i++) func.args.push('i64')
-func.result = 'i32'
+func.args.push('i32')
+func.result = null
 functions.push(func)
 
+func = {}
 func.name = 'fe25519_sq'
 func.args = []
 for (let i = 0; i < 12; i++) func.args.push(i < 10 ? 'i64' : 'i32')
-func.result = 'i32'
+func.args.push('i32')
+func.result = null
 functions.push(func)
 
 // parse(input, table)
@@ -94,9 +100,8 @@ functions.push(func)
 const file = fs.createWriteStream('./test.wat')
   .on('error', console.error)
 
-file.write(header(functions))
-file.write(compile(parse(input), functions.map(f => f.name)))
-file.write(')')
+const compiler = new compile(functions)
+file.write(compiler.compile(parse(input)))
 file.close()
 
 // parse.parseScopes(input)

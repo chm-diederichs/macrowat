@@ -156,8 +156,6 @@ function parseOp (line) {
       }
     })
 
-  console.log(args)
-
   return {
     type: 'call',
     operator: func,
